@@ -9,7 +9,7 @@ import { NextSeo } from "next-seo";
 import remarkToc from "remark-toc";
 import rehypeSlug from "rehype-slug";
 import remarkPrism from "remark-prism";
-import { createElement, Fragment } from "react";
+import React,{ createElement, Fragment } from "react";
 import rehypeParse from "rehype-parse";
 import rehypeReact from "rehype-react";
 import Link from "next/link";
@@ -17,88 +17,6 @@ import "prismjs/themes/prism-tomorrow.css";
 import remarkUnwrapImages from "remark-unwrap-images";
 import { toc } from "mdast-util-toc";
 import { visit } from "unist-util-visit";
-
-export async function getStaticProps({ params }) {
-  const file = fs.readFileSync(`posts/${params.slug}.md`, "utf-8");
-  const { data, content } = matter(file);
-
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkPrism, {
-      plugins: ["line-numbers"],
-    })
-    .use(remarkToc, {
-      heading: "目次",
-      tight: true,
-    })
-    .use(remarkUnwrapImages)
-    .use(remarkRehype, { allowDangerousHtml: true })
-    .use(customCode)
-    .use(rehypeSlug)
-    .use(rehypeStringify, { allowDangerousHtml: true })
-    .process(content);
-
-  const toc = await unified()
-    .use(remarkParse)
-    .use(getToc, {
-      heading: "目次",
-      tight: true,
-    })
-    .use(remarkRehype)
-    .use(rehypeStringify)
-    .process(content);
-
-  return {
-    props: {
-      frontMatter: data,
-      content: result.toString(),
-      toc: toc.toString(),
-      slug: params.slug,
-    },
-  };
-}
-
-const toReactNode = (content) => {
-  return unified()
-    .use(rehypeParse, {
-      fragment: true,
-    })
-    .use(rehypeReact, {
-      createElement,
-      Fragment,
-      components: {
-        a: MyLink,
-        img: MyImage,
-      },
-    })
-    .processSync(content).result;
-};
-
-const MyImage = ({ src, alt }) => {
-  return (
-    <div className="relative max-w-full h-96">
-      <Image src={src} alt={alt} layout="fill" objectFit="contain" />
-    </div>
-  );
-};
-
-const MyLink = ({ children, href }) => {
-  if (href === "") href = "/";
-  return href.startsWith("/") || href.startsWith("#") ? (
-    <Link href={href}>{children}</Link>
-  ) : (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {children}
-    </a>
-  );
-};
-
-const getToc = (options) => {
-  return (node) => {
-    const result = toc(node, options);
-    node.children = [result.map];
-  };
-};
 
 const customCode = () => {
   return (tree) => {
@@ -124,6 +42,78 @@ const customCode = () => {
   };
 };
 
+const getToc = (options) => {
+  return (node) => {
+    const result = toc(node, options);
+    node.children = [result.map];
+  };
+};
+
+// toReactNode関数をここで定義
+const toReactNode = (html) => {
+  return unified()
+    .use(rehypeParse, {
+      fragment: true,
+    })
+    .use(rehypeReact, {
+      createElement,
+      Fragment,
+      components: {
+        a: MyLink,
+        img: MyImage,
+      },
+    })
+    .processSync(html).result;
+};
+
+export async function getStaticProps({ params }) {
+  const file = fs.readFileSync(`posts/${params.slug}.md`, "utf-8");
+  const { data, content } = matter(file);
+
+  const result = await unified()
+    .use(remarkParse)
+    .use(remarkPrism, {
+      plugins: ["line-numbers"],
+    })
+    .use(remarkToc, {
+      heading: "目次",
+      tight: true,
+    })
+    .use(remarkUnwrapImages)
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(customCode)
+    .use(rehypeSlug)
+    .use(rehypeStringify, { allowDangerousHtml: true })
+    .process(content)
+    .catch((err) => {
+      console.error("Error processing markdown:", err);
+      throw err;
+    });
+
+  const tocResult = await unified()
+    .use(remarkParse)
+    .use(getToc, {
+      heading: "目次",
+      tight: true,
+    })
+    .use(remarkRehype)
+    .use(rehypeStringify)
+    .process(content)
+    .catch((err) => {
+      console.error("Error processing TOC:", err);
+      throw err;
+    });
+
+  return {
+    props: {
+      frontMatter: data,
+      content: result.toString(),
+      toc: tocResult.toString(),
+      slug: params.slug,
+    },
+  };
+}
+
 export async function getStaticPaths() {
   const files = fs.readdirSync("posts");
   const paths = files.map((fileName) => ({
@@ -131,12 +121,31 @@ export async function getStaticPaths() {
       slug: fileName.replace(/\.md$/, ""),
     },
   }));
-  console.log("paths:", paths);
   return {
     paths,
     fallback: false,
   };
 }
+
+// MyImageとMyLinkを定義
+const MyImage = ({ src, alt }) => {
+  return (
+    <div className="relative max-w-full h-96">
+      <Image src={src} alt={alt} layout="fill" objectFit="contain" />
+    </div>
+  );
+};
+
+const MyLink = ({ children, href }) => {
+  if (href === "") href = "/";
+  return href.startsWith("/") || href.startsWith("#") ? (
+    <Link href={href}>{children}</Link>
+  ) : (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  );
+};
 
 const Post = ({ frontMatter, content, slug, toc }) => {
   return (
@@ -184,6 +193,7 @@ const Post = ({ frontMatter, content, slug, toc }) => {
         <div className="grid grid-cols-12">
           <div className="col-span-9">{toReactNode(content)}</div>
           <div className="col-span-3">
+          <h2 className="text-xl font-bold mb-2">目次</h2>
             <div
               className="sticky top-[50px]"
               dangerouslySetInnerHTML={{ __html: toc }}

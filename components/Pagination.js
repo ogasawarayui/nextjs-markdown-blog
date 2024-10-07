@@ -2,7 +2,7 @@ import Link from "next/link";
 
 const Pagination = ({ pages, current_page = 1 }) => {
   return (
-    <div class="flex items-center space-x-1 mt-8">
+    <div className="flex items-center space-x-1 mt-8">
       {pages.map((page) => (
         <Link href={`/page/${page}`} key={page}>
           <div
