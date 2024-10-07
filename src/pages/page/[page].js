@@ -32,13 +32,14 @@ export async function getStaticProps({ params }) {
   );
 
   const totalPages = Math.ceil(posts.length / PAGE_SIZE);
-  const pages = range(1, Math.ceil(posts.length / PAGE_SIZE));
+  const pages = range(1, totalPages);
 
   return {
     props: {
       posts: slicedPosts,
       pages,
       current_page,
+      totalPages,
     },
   };
 }
