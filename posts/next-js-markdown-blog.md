@@ -6,7 +6,7 @@ image: nextjs.png
 categories: ['react']
 ---
 
-<img src="http://localhost:3000/nextjs-welcome.png" alt="Next.jsのWelcomeページ" width="1024" height="679" />
+<img src="/nextjs-welcome.png" alt="Next.jsのWelcomeページ" width="1024" height="679" />
 
 ## 目次
 

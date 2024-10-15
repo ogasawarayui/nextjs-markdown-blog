@@ -17,7 +17,6 @@ import "prismjs/themes/prism-tomorrow.css";
 import remarkUnwrapImages from "remark-unwrap-images";
 import { toc } from "mdast-util-toc";
 import { visit } from "unist-util-visit";
-import getToc from "some-path";
 
 // カスタムコードのマークダウン変換処理
 const customCode = () => {
@@ -47,27 +46,11 @@ const customCode = () => {
 
 //目次生成関数
 const getToc = (options) => {
-  return (node) => {
-    // nodeが適切な構造であるかを確認
-    if (!node || !node.children || !Array.isArray(node.children)) {
-      console.warn("Node structure is not valid for TOC generation");
-      node.children = [];
-      return;
-    }
-
-    // tocがnodeを処理して結果を返す
-    const result = toc(node, options);
-
-    // result.mapが存在するかをチェックし、存在しない場合は空の配列を設定
-    if (result.map) {
-      node.children = [result.map, ...node.children];
-    } else {
-      // result.mapが存在しない場合の処理
-      console.warn("No table of contents generated, node may not contain headings.");
-    node.children = [...node.children];
-    }
+  return (tree) => {
+    const result = toc(tree, options);
+    tree.children = [result.map];
+    };
   };
-};
 
 // HTMLをReact Nodeに変換する関数
 const toReactNode = (html) => {
@@ -245,14 +228,16 @@ const Post = ({ frontMatter, content, slug, toc, error, message }) => {
             <span>カテゴリーがありません</span>
           )}
         </div>
-        <div>{toReactNode(content) || "記事を読み込めませんでした。"}</div>
-        {toc && (
-          <div className="toc">
-            <h2>目次</h2>
-            <div dangerouslySetInnerHTML={{ __html: toc }} />
-          </div>
-        )}
-      </div>
+        <div className="grid grid-cols-12">
+    <div className="col-span-9">{toReactNode(content)}</div>
+    <div className="col-span-3">
+      <div
+        className="sticky top-[50px]"
+        dangerouslySetInnerHTML={{ __html: toc }}
+      ></div>
+    </div>
+  </div>
+</div>
     </>
   );
 };
